@@ -1,0 +1,254 @@
+---
+title: "ERHS535_7.8"
+author: "Christopher Tsz Hin Choi"
+date: "2025-10-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(babynames)
+library(stringr)
+library(dplyr)
+library(ggplot2)
+
+top_letters <- babynames %>% 
+  mutate(first_letter = str_sub(name, 1, 1))
+
+top_letters %>% 
+  select(name, first_letter) %>% 
+  slice(1:5)
+
+```
+
+```{r}
+c_or_s <- top_letters |>
+  dplyr::group_by(first_letter) |>
+  dplyr::summarise(count = n()) |>
+  dplyr::mutate(prop = count/sum(count)) |>
+  dplyr::filter(first_letter == 'C' | first_letter == 'S')
+
+sum(c_or_s$prop)
+
+```
+
+```{r}
+prop_letters <- top_letters |>
+  dplyr::group_by(first_letter) |>
+  dplyr::summarise(count = n()) |>
+  dplyr::mutate(prop = count/sum(count)) |>
+  dplyr::ungroup()
+
+library(forcats)
+library(scales)
+ggplot(data = prop_letters |>
+         dplyr::mutate(first_letter = forcats::fct_reorder(first_letter, prop)), aes(x = first_letter)) +
+  geom_bar(aes(weight = prop))+
+  coord_flip() +
+  scale_y_continuous(labels = percent)
+```
+
+
+### 7.8.3.1
+```{r}
+student_list <- tibble(name = c("Burton", "Caroline", "Chaoyu", "Collin",
+                                    "Daniel", "Eric", "Erin", "Heather",
+                                    "Jacob", "Jessica", "Khum", "Kyle",
+                                    "Matthew", "Molly", "Nikki", "Rachel",
+                                    "Sere",  "Shayna", "Sherry", "Sunny"))
+
+prop_students <- student_list %>% 
+  mutate(first_letter = str_sub(name, 1, 1)) |>
+  dplyr::group_by(first_letter) |>
+  dplyr::summarise(count = n()) |>
+  dplyr::ungroup() |>
+  dplyr::mutate(prop = count / sum(count))
+
+c_or_s_students <- prop_students |>
+  dplyr::filter(first_letter %in% c("C", "S"))
+
+```
+
+
+
+```{r}
+# prop.test(
+#   x = c(sum(c_or_s$count), sum(c_or_s_students$count)), 
+#   n = c(count(top_letters), count(student_list))
+#   )
+
+prop.test(x = c(268910, 7), n = c(1924665, 20))
+```
+
+
+### 7.8.4
+
+```{r}
+if (!require(ggplot2)) install.packages("ggplot2")
+if (!require(broom)) install.packages("broom")
+if (!require(ggfortify)) install.packages("ggfortify")
+if (!require(dlnm)) install.packages("dlnm")
+library(dlnm)
+library(ggfortify)
+library(ggplot2)
+library(broom)
+
+```
+
+
+```{r}
+chicago <- dlnm::chicagoNMMAPS
+
+
+mod_1 = lm()
+
+```
+
+
+
+
+## 7.8.6
+
+
+```{r}
+install.packages('nycflights13')
+library(nycflights13)
+
+data(flights)
+
+
+head(flights)
+```
+
+```{r}
+flights_1 <- flights |>
+  dplyr::select(dep_delay,
+                carrier,
+                hour,
+                origin) |>
+  dplyr::filter(origin == "LGA")
+
+head(flights_1)
+```
+
+```{r}
+flights_2 = flights_1 |>
+  dplyr::filter(is.na(dep_delay) == F) |>
+  dplyr::mutate(late_dep =dep_delay >= 15)
+
+head(flights_2)
+
+flights_2$late_dep |> mean()
+
+
+
+```
+
+```{r}
+flights_3 = flights_2 |>
+  dplyr::group_by(hour) |>
+  dplyr::summarise(prop_late = mean(late_dep))
+
+ggplot(data = flights_3) +
+  geom_line(aes(x= hour, y = prop_late))
+```
+
+```{r}
+mod_1 = glm(late_dep ~ hour, data = flights_2, family = "binomial"(link = "logit"))
+
+mod_1
+```
+
+```{r}
+library(purrr)
+
+nested_flights = flights_2 |>
+  dplyr::group_by(carrier) |>
+  tidyr::nest() |>
+  dplyr::mutate(reg = purrr::map(data, ~ glm(late_dep ~ hour, data = .x, family = "binomial"(link = "logit"))))
+
+
+
+
+
+
+```
+
+
+## 7.8.7
+
+```{r}
+word = data.frame(word = "ling") |>
+  dplyr::mutate(
+    new_word = paste0(stringr::str_sub(word, 4,4),
+                      stringr::str_sub(word, 1,3)
+                      )
+  )
+
+word = "ling"
+first = stringr::str_sub(word, -1) 
+last = stringr::str_sub(word, 1, -2)
+new_word = paste0(first, last)
+new_word
+
+
+move_letter = function(word){
+  first = stringr::str_sub(word, -1) 
+  last = stringr::str_sub(word, 1, -2)
+  new_word = paste0(first, last)
+  
+  return(new_word)
+}
+
+move_letter("ling")
+
+```
+
+
+```{r}
+word_list = read.csv('https://raw.githubusercontent.com/dwyl/english-words/master/words.txt') |>
+  dplyr::rename(words = X2)
+
+
+head(word_list)
+
+
+list_of_words = c("ling", "scat", "soil")
+
+list_of_words %in% word_list$words
+
+
+is_word = function(words_to_check, real_word_list = word_list){
+  
+  print(words_to_check %in% real_word_list$words)
+  
+  words_to_check = words_to_check |>
+    as.data.frame() |>
+    dplyr::mutate(exists = words_to_check %in% real_word_list$words)
+  
+  return(words_to_check)
+    
+}
+
+
+is_word(list_of_words)
+is_word("tart")
+
+
+real_world_list
+```
+
+```{r}
+word_list = read.csv('https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt', header = F) |>
+  dplyr::rename(words = "V1")
+
+
+is_word(list_of_words)
+
+```
+
+

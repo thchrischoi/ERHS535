@@ -1,0 +1,346 @@
+---
+title: "ERHS535 Homework 3"
+author: "Christopher Tsz Hin Choi"
+date: "2025-10-10"
+output:
+  word_document: default
+  html_document: default
+---
+
+
+
+
+
+```{r}
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(broom)
+library(tibble)
+library(knitr)
+library(forcats)
+library(cowplot)
+library(elevatr)
+library(terrainr)
+library(readr)
+library(knitr)
+```
+
+## Question 1
+
+Complete your homework in an RMarkdown document and knit it to either Word or PDF to submit. Change your global options so that no warnings, messages, or errors are printed out, but that so all code and results are printed. (10 points)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_chunk$set(
+  echo = TRUE,  
+  results = "markup", 
+  warning = FALSE,   
+  message = FALSE,
+  error = FALSE    
+)
+```
+
+
+
+## Question 2
+
+Select one of the figures you created for the last homework. You will be improving that figure in this part of the homework.
+
+```{r}
+rdnbr = terra::rast('data/CZU_rdnbr_DOY275-305.tif') |> as.data.frame(xy=T)
+```
+
+Go through the six guidelines for good graphics we discussed in Chapter 4. Re-create the same plot you created in the last homework and, in a paragraph or two, list which of these elements you currently have in the plot and how these elements help make the plot more effective. (10 points)
+
+```{r, fig.width=7, fig.height =5}
+mean.rdnbr = rdnbr$rdnbr |> mean()
+
+ggplot(data = rdnbr) +
+  geom_histogram(aes(x = rdnbr),  binwidth = 10, color = 'darkgrey', fill = 'black', alpha = 0.3) +
+  scale_x_continuous(limits = c(-200, 1000), breaks = seq(-200, 1000, by = 100)) +
+  geom_vline(xintercept = mean.rdnbr, color = 'darkred', size = 1, alpha = 0.5, linetype = "dashed") +
+  geom_text(aes(x = mean.rdnbr + 50, y = 7500), label = "Mean", colour = "darkred") +
+  labs (x = "RdNBR (Burn Severity)",
+        y = "Count (Pixels: 30m^2)",
+        title = "Statistical Plot: Distribution of Burn Severity Across the CZU Fire") +
+  theme_minimal()
+
+```
+
+
+* Above is the original plot from the last homework. I had written then with the following: "This plot follows the rules of good plot making because it 1) has **high data-ink ratio** by using the *ggplot::theme_minimal()* function we reduce clutter, and 2) it **includes useful references** by including a mean value represented with a *ggplot::vline()*." I did not include that I also included the rule  3) **Use clear, meaningful labels** with the use of the "Mean" label
+
+
+Select three of these guidelines for which you either aren’t using them in the current graph or could add to what you currently have in the plot. Create a new version of the plot based on your choice. Include a paragraph explaining how these changes make the plot more effective and how you added them. (20 points)
+
+
+
+* To further implement the guidelines to this graph, I 1) added **useful references** to the graph by categorizing RdNBR values into low, moderate, and high severity (each category 1/3 of the range of RdNBR values) as reference. This information was added with 2) **making order meaningful** in mind by placing this information in the background and using graduated colors to make level of severity intuitive. I also provided another 3) **useful reference** by adding a comma serperator in the y-axis notation for increased legilibility. Finally 4) **small multiples** were used to facet the data by severity class so that their distributions could be compared independently.
+
+```{r, fig.width=12, fig.height =5}
+## we will first remove the upper and lower 5% of the distribution to remove outliers
+rdnbr = rdnbr|>
+  dplyr::filter(
+    rdnbr >= quantile(rdnbr, 0.01, na.rm = TRUE),
+    rdnbr <= quantile(rdnbr, 0.99, na.rm = TRUE)
+  )
+
+mean.rdnbr = mean(rdnbr$rdnbr)
+
+rdnbr.min = min(rdnbr$rdnbr, na.rm = TRUE)
+rdnbr.max = max(rdnbr$rdnbr, na.rm = TRUE)
+## find range of values
+rdnbr.range = (max(rdnbr$rdnbr) - min(rdnbr$rdnbr))
+## breaks for seperating each severity class
+breaks = c(rdnbr.min,
+            rdnbr.min + rdnbr.range/3,
+            rdnbr.min + 2*rdnbr.range/3,
+            rdnbr.max)
+## Convert to df and add labels
+severity.bg = data.frame(
+  xmin = breaks[-length(breaks)],
+  xmax = breaks[-1],
+  fill = factor(c("Low", "Moderate", "High"),
+                levels = c("Low", "Moderate", "High"))
+)
+
+p1 = ggplot(data = rdnbr) +
+  # Rectangles severity levels
+  geom_rect(data = severity.bg,
+            aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = Inf, fill = fill),
+            alpha = 0.05) +
+  # Histogram of RdNBR
+  geom_histogram(aes(x = rdnbr), binwidth = 10, color = 'black', fill = 'black', alpha = 0.4) +
+  # Rectangles severity levels (outlines)
+  geom_rect(data = severity.bg,
+            aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = Inf, fill = fill),
+            alpha = 0.2) +
+  # Mean line
+  geom_vline(aes(xintercept = mean.rdnbr), color = 'black', size = 1.5, linetype = "dashed") +
+  geom_text(aes(x = mean.rdnbr + 50, y = Inf, label = "Mean"),
+            colour = "black", vjust = 1.5) +
+  # Scales and labels
+  # scale_x_continuous(limits = c(-200, 1000), breaks = seq(-200, 1000, by = 100)) +
+  scale_fill_manual(values = c("Low" = "yellow", "Moderate" = "orange", "High" = "darkred")) +
+  labs(x = "RdNBR (Burn Severity)",
+       y = "Count (Pixels: 30m²)",
+       title = "Statistical Plot: Distribution of Burn Severity Across the CZU Fire",
+       fill = "Burn Severity Class") +
+  scale_y_continuous(labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+## Add classes of severity to the dataset for facetting
+rdnbr = rdnbr |>
+  dplyr::mutate(Severity = dplyr::case_when(
+    rdnbr < breaks[2] ~ "Low",
+    (rdnbr >= breaks[2]) & (rdnbr < breaks[3]) ~ "Moderate",
+    rdnbr >= breaks[3] ~ "High"
+  ) |>
+    as.factor())
+
+rdnbr$Severity =  forcats::fct_relevel(rdnbr$Severity, "Low", "Moderate", "High")
+
+
+p2 = ggplot(data = rdnbr) +
+  geom_histogram(aes(x = rdnbr, fill = Severity), binwidth = 10, color = 'black', alpha = 0.7) +
+  facet_wrap(vars(Severity), ncol = 1) +
+  scale_fill_manual(values = c("Low" = "yellow", "Moderate" = "orange", "High" = "darkred")) +
+  scale_y_continuous(labels=function(x) format(x, big.mark = ",", scientific = FALSE)) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+
+
+
+cowplot::plot_grid(p1, p2, ncol = 2)
+```
+
+## Question 3
+
+In the titanic package (available on CRAN), there’s a titanic_train dataset we’ll use for this question.
+Load that dataset and create a dataframe object limited to the columns Survived and Age. Change the labeling for the Survived column so that it says “Survived” instead of “1” and “Died” instead of “0”. Print out the oldest five people who survived and who died (so, you’ll be printing out 10 rows total). (10 points)
+
+
+```{r}
+# install.packages("titanic")
+library(titanic)
+data("titanic_train")
+
+titanic_train_2 = as.data.frame(titanic_train) |>
+  dplyr::transmute(Survived = ifelse(Survived == 1, "Survived", "Died"),
+                   Age)
+
+titanic_oldest_survived = titanic_train_2 |>
+  dplyr::filter(Survived == "Survived") |>
+  dplyr::arrange(-Age) |>
+  dplyr::slice(1:5)
+
+titanic_oldest_died = titanic_train_2 |>
+  dplyr::filter(Survived == "Died") |>
+  dplyr::arrange(-Age) |>
+  dplyr::slice(1:5)
+
+
+knitr::kable(titanic_oldest_survived,
+             caption = "Oldest Survived on Titanic")
+
+knitr::kable(titanic_oldest_died,
+             caption = "Oldest Died on Titanic")
+
+```
+
+Create a histogram of the ages of people in this dataset, faceted by whether or not they survived. Arrange these so that they are vertically aligned rather than side by side (Hint: check the nrow option when faceting). Change the label on the y-axis to be something that more precisely describes what’s being shown (rather than “count”) and add a title to the plot. (10 points)
+
+```{r}
+ggplot(titanic_train_2) +
+  geom_histogram(aes(x = Age, fill = Survived), binwidth = 5, color = 'darkgrey') +
+  facet_wrap(vars(Survived), nrow = 2) +
+  scale_fill_manual(values = c("Survived" = "darkgreen", "Died" = "brown")) +
+  labs(x = "Age",
+       y = "Number of People",
+       title = "Distribution of Ages Aboard the Titanic") +
+  theme_minimal() +
+  theme(legend.position = 'none') 
+  
+```
+
+Determine the mean age for each group (survived and died) for everyone who has a non-missing age, as well as the total number of people in the group and the number of people with age information missing for the group. Print out a two-row dataframe with this summary information (it should have columns for (1) which group (survived / died); (2) the mean age of people in the group with non-missing age data; (3) the total number of people in the group; and (4) the number of people in the group with missing age data). (15 points)
+
+```{r}
+## Mean age of survived
+mean_survived = titanic_train_2 |>
+  dplyr::filter(Survived == "Survived",
+                is.na(Age) == F) |>
+  dplyr::pull(Age) |> ## turn to vector
+  mean()
+
+## Mean age of died
+mean_died = titanic_train_2 |>
+  dplyr::filter(Survived == "Died",
+                is.na(Age) == F) |>
+  dplyr::pull(Age) |>
+  mean()
+
+
+## number of survived
+n_survived = titanic_train_2 |>
+  dplyr::filter(Survived == "Survived") |>
+  nrow()
+
+
+## number of dead
+n_died = titanic_train_2 |>
+  dplyr::filter(Survived == "Died") |>
+  nrow()
+
+
+## number of survvived with no age
+n_survived_no_age = titanic_train_2 |>
+  dplyr::filter(Survived == "Survived",
+                is.na(Age) == T) |>
+  nrow()
+
+
+## number of dead with no age
+n_died_no_age = titanic_train_2 |>
+  dplyr::filter(Survived == "Died",
+                is.na(Age) == T) |>
+  nrow()
+
+
+
+
+
+## format as df
+summary_df = data.frame(
+  Group = c("Survived", "Died"),
+  Mean_Age = c(mean_survived, mean_died),
+  Total_Count = c(n_survived, n_died),
+  Missing_Age_Count = c(n_survived_no_age, n_died_no_age)
+)
+
+summary_df
+
+```
+
+
+
+Run a statistical test of whether there is a difference in the mean ages between the two groups (Hint: you might want to google something like “test difference two means”). You can run this test either using a simple statistical test or by fitting a linear regression—you may take either approach. (15 points)
+
+
+
+## Question 4
+
+There’s a radio show on National Public Radio called “Weekend Edition”, and each week they have a “Sunday Puzzle”. The puzzle for the week ending August 5, 2018 was this: “I said think of a familiar two-word phrase in eight letters with four letters in each word. The first word starts with M. And I said move the first letter of the second word to the end, and you get a regular eight-letter word, which, amazingly, other than the M, doesn’t share any sounds with the original two-word phrase. What phrase is it?”. The winner had this to say about how he solved the problem: “I went to the National Puzzlers’ League website and pulled up a list of eight-letter words that start with the letter M and just started scanning through it…’. You can solve this puzzle using R (some of the stringr functions, like str_count and str_sub, will be particularly helpful). Write R code to solve this puzzle. (10 points)
+
+Hint 1: Work backwords. Start with eight-letter words, and apply a backwards transform to the one described to transform them into two four-letter words.
+Hint 2: This link might prove very useful: https://github.com/dwyl/english-words.
+
+
+
+
+```{r}
+# Import words
+words = read_csv(
+  "https://raw.githubusercontent.com/dwyl/english-words/refs/heads/master/words.txt",
+  col_names = "word",
+  show_col_types = FALSE) |>
+  dplyr::mutate(word = str_to_lower(word))
+
+## Convert to list
+word_set = unique(words$word)
+
+# Frequency list (top ~5000 common English words)
+freq <- read_csv(
+  "https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english.txt",
+  col_names = "word", show_col_types = FALSE
+  ) |>
+  dplyr::mutate(word = stringr::str_to_lower(word)) |>
+  dplyr::mutate(rank = dplyr::row_number())
+
+# words that start with m and are 8 letters long
+m8 = words |>
+  dplyr::filter(str_length(word) == 8, str_starts(word, "m")) |>
+  dplyr::pull(word)
+
+#  split and transform
+results = tibble(word8 = m8) |>
+  dplyr::mutate(
+    first4 = str_sub(word8, 1, 4), ## first 4 letters
+    second4 = str_sub(word8, 5, 8), ## last 4 letters
+    rearranged_second = paste0(str_sub(second4, 4, 4), str_sub(second4, 1, 3)), ## move last letter of second word to front
+    new_word = paste0(first4, rearranged_second), 
+    valid_first = first4 %in% word_set, ## is first word in the original word set
+    valid_second = rearranged_second %in% word_set, ## is second word in the original word set
+    valid_new_word = new_word %in% word_set,
+    valid_rearranged = rearranged_second %in% word_set
+  ) |>
+  dplyr::filter(valid_first, valid_second, valid_rearranged)#, ## keep only words that exist
+
+# Join resulting words with common words
+results_freq <- results |>
+  dplyr::left_join(freq |> dplyr::select(word, rank), by = c("first4" = "word")) |>
+  dplyr::rename(rank_first = rank) |>
+  dplyr::left_join(freq |> dplyr::select(word, rank), by = c("rearranged_second" = "word")) |>
+  dplyr::rename(rank_second = rank) |>
+  dplyr::filter(!is.na(rank_first), !is.na(rank_second)) |>
+  dplyr::mutate(total_rank = rank_first + rank_second) |> ## 9999 means that NAs get high number
+  dplyr::arrange(total_rank)
+
+# 6. Keep only reasonably common words (both in top ~5000)
+common_phrases <- results_freq |>
+  dplyr::filter(!is.na(rank_first), !is.na(rank_second)) |>
+  dplyr::select(word8, first4, rearranged_second, rank_first, rank_second, total_rank)
+
+
+knitr::kable((common_phrases |> dplyr::select(word8, first4, rearranged_second)),
+      caption = "4+4 phrases starting with M")
+```
+
+
+```

@@ -1,0 +1,105 @@
+---
+title: "Homework 4"
+author: "Christopher Tsz Hin Choi"
+date: "2025-11-05"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_chunk$set(
+  echo = TRUE,  
+  results = "markup", 
+  warning = FALSE,   
+  message = FALSE,
+  error = FALSE    
+)
+```
+
+## Q1
+
+Read in the data as an R object named homicidesand create a new column called city_name that combines the city and state like this “Baltimore, MD”. (15 points)
+```{r}
+homicides = read.csv('https://raw.githubusercontent.com/washingtonpost/data-homicides/refs/heads/master/homicide-data.csv') |>
+  dplyr::mutate(city_name = paste0(city, ", ",state))
+
+# names(homicides)
+# summary(homicides)
+head(homicides$city_name)
+
+```
+
+## Q2
+
+Create a dataframe called unsolved with one row per city that gives the total number of homicides for the city and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”). (15 points)
+```{r}
+total_homicides = homicides |>
+  dplyr::group_by(city_name) |>
+  dplyr::summarise(total_homicides = dplyr::n())
+
+unsolved = homicides |>
+  dplyr::mutate(solved = ifelse(disposition %in% c("Closed without arrest", "Open/No arrest"), "No", "Yes")) |>
+  dplyr::filter(solved == "No") |>
+  dplyr::group_by(city_name) |>
+  dplyr::summarise(unsolved_homicides = dplyr::n()) |>
+  dplyr::ungroup() |>
+  dplyr::full_join(total_homicides) |>
+  
+  dplyr::filter(city_name != "Tulsa, AL")
+
+head(unsolved)
+```
+* Note: "Tulsa, AL" was dropped because it is an error in the dataset. It was likely to be a typo for "Tulsa, OK" and could be reclassed as such, but because it is only one record, would unlikely make a statistical difference
+
+## Q3
+
+For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved, as well as the 95% confidence interval for this proportion (we’re assuming that the data from the years covered by this dataset is a representative sample of Baltimore in a larger set of years). Print the output of the prop.test directly in your RMarkdown, and then save the output of prop.test as an R object and apply the tidy function from the broom package to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe. (20 points)
+```{r}
+balitmore_homicides = dplyr::filter(unsolved,
+                                    city_name == "Baltimore, MD")
+
+baltimore_proptest = prop.test(balitmore_homicides$unsolved_homicides,
+                               balitmore_homicides$total_homicides) |>
+  broom::tidy()
+
+
+baltimore_proptest
+```
+## Q4
+
+Now use what you learned from running prop.test for one city to run prop.test for all the cities. Your goal is to create the dataframe you need to create the figure shown below, where the points show the estimated proportions of unsolved homicides in each city and the horizontal lines show the estimated 95% confidence intervals. Do this all within a “tidy” pipeline, starting from the unsolved dataframe that you created for step 3. Use map2 from purrr to apply prop.test within each city and then map from purrr to apply tidy to this output. Use the unnest function from the tidyr package on the resulting list-column (from mapping tidy to the prop.test output list-column), with the option .drop = TRUE, to get your estimates back into a regular tidy data frame before plotting. (25 points)
+
+```{r}
+unsolved_prop_test = unsolved |>
+  dplyr::mutate(unsolved_prop_test = purrr::map2(unsolved_homicides, total_homicides, prop.test),
+                unsolved_prop_test_tidied = purrr::map(unsolved_prop_test, broom::tidy)) |>
+  tidyr::unnest(unsolved_prop_test_tidied, .drop = T)|>
+  dplyr::mutate(city_name = forcats::fct_reorder(city_name, estimate, .desc = F))
+
+
+head(unsolved_prop_test)
+```
+
+## Q5
+
+Create the plot shown below. Hint: Check out the geom_errorbarh geom with the height = 0 option to get the horizontal lines for the confidence intervals. To get full points, be very careful to make sure that all labeling, color choices, figure dimensions, etc., in your figure match the figure shown here. (25 points)
+```{r, fig.width= 5, fig.height=7}
+library(ggplot2)
+
+ggplot(unsolved_prop_test) +
+  geom_point(aes(x = city_name, y = estimate), color = "white") +
+  geom_errorbar(aes(x = city_name, y = estimate, ymin = conf.low, ymax = conf.high), color = "white", width = 0) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  
+  labs(title = "Unsolved homicides by city",
+       subtitle = "Bars show 95% confidence interval",
+       y = "Percent of homicides that are unsolved",
+       x = NULL) +
+
+  coord_flip() +
+  theme_dark()
+```
+

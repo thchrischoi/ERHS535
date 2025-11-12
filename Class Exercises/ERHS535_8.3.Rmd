@@ -1,0 +1,181 @@
+---
+title: "ERHS535 8.5"
+author: "Christopher Tsz Hin Choi"
+date: "2025-10-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(lubridate)
+library(tidyr)
+library(stringr)
+```
+
+```{r}
+storm_data = readr::read_csv('data/StormEvents_details-ftp_v1.0_d2017_c20250520.csv') |>
+  dplyr::select(BEGIN_DATE_TIME,
+                END_DATE_TIME,
+                # BEGIN_YEARMONTH, BEGIN_DAY, BEGIN_TIME,
+                # END_YEARMONTH, END_DAY, END_TIME,
+                EPISODE_ID,
+                EVENT_ID,
+                STATE, STATE_FIPS,
+                CZ_NAME, CZ_TYPE, CZ_FIPS,
+                EVENT_TYPE,
+                SOURCE,
+                BEGIN_LAT, BEGIN_LON, END_LAT, END_LON
+                ) |>
+  dplyr::mutate(BEGIN_DATE_TIME = lubridate::dmy_hms(BEGIN_DATE_TIME), ## Convert to date time format
+                END_DATE_TIME = lubridate::dmy_hms(END_DATE_TIME),
+                
+                STATE = stringr::str_to_sentence(STATE), ## convert to title case
+                CZ_NAME = stringr::str_to_sentence(CZ_NAME)) |>
+  dplyr::filter(CZ_TYPE == "C") |> ## filter to only counties
+  dplyr::select(-CZ_TYPE) |>
+  dplyr::mutate(STATE_FIPS = stringr::str_pad(STATE_FIPS, width = 2, side = "left", pad = "0"),
+                CZ_FIPS = stringr::str_pad(CZ_FIPS, width = 3, side = "left", pad = "0"),
+                FIPS = paste0(STATE_FIPS, CZ_FIPS)) |>
+  dplyr::rename_all(dplyr::funs(stringr::str_to_lower(.))) |>
+  dplyr::group_by(state) |>
+  dplyr::summarise(count = dplyr::n())
+  
+  
+
+head(storm_data)
+```
+
+## 8.3
+
+```{r}
+# install.packages(c("maps", "viridis", "faraway", "purrr"))
+
+library(sf)
+library(tigris)
+library(maps)
+library(viridis)
+library(faraway)
+library(purrr)
+library(ggplot2)
+```
+```{r, class = "sf"}
+us_states <- states()
+plot(us_states$geometry)
+```
+
+```{r}
+co_counties <- tigris::counties(state = "CO", cb = TRUE, class = "sf")
+
+head(co_counties)
+
+ggplot()+
+  geom_sf(data = co_counties, aes(fill = ALAND))
+```
+
+```{r}
+storm_data_counties = readr::read_csv('data/StormEvents_details-ftp_v1.0_d2017_c20250520.csv') |>
+  dplyr::select(BEGIN_DATE_TIME,
+                END_DATE_TIME,
+                # BEGIN_YEARMONTH, BEGIN_DAY, BEGIN_TIME,
+                # END_YEARMONTH, END_DAY, END_TIME,
+                EPISODE_ID,
+                EVENT_ID,
+                STATE, STATE_FIPS,
+                CZ_NAME, CZ_TYPE, CZ_FIPS,
+                EVENT_TYPE,
+                SOURCE,
+                BEGIN_LAT, BEGIN_LON, END_LAT, END_LON
+                ) |>
+  dplyr::mutate(BEGIN_DATE_TIME = lubridate::dmy_hms(BEGIN_DATE_TIME), ## Convert to date time format
+                END_DATE_TIME = lubridate::dmy_hms(END_DATE_TIME),
+                
+                STATE = stringr::str_to_sentence(STATE), ## convert to title case
+                CZ_NAME = stringr::str_to_sentence(CZ_NAME)) |>
+  dplyr::filter(CZ_TYPE == "C") |> ## filter to only counties
+  dplyr::select(-CZ_TYPE) |>
+  dplyr::mutate(STATE_FIPS = stringr::str_pad(STATE_FIPS, width = 2, side = "left", pad = "0"),
+                CZ_FIPS = stringr::str_pad(CZ_FIPS, width = 3, side = "left", pad = "0"),
+                FIPS = paste0(STATE_FIPS, CZ_FIPS)) |>
+  dplyr::rename_all(dplyr::funs(stringr::str_to_lower(.))) |>
+  
+  ## Filter down to colorado and scount by county
+  dplyr::filter(state == "Colorado") |>
+  dplyr::group_by(cz_name)|>
+  dplyr::summarise(count = dplyr::n()) |>
+  
+  ## add geometry
+  dplyr::right_join(co_counties |>
+                     dplyr::rename(cz_name = NAME) |>
+                     dplyr::select(cz_name, geometry),
+                   by = "cz_name") |>
+  
+  
+  dplyr::mutate(count = ifelse(is.na(count) == T, 0, count))
+
+
+
+storm_data_counties_event_type = readr::read_csv('data/StormEvents_details-ftp_v1.0_d2017_c20250520.csv') |>
+  dplyr::select(BEGIN_DATE_TIME,
+                END_DATE_TIME,
+                # BEGIN_YEARMONTH, BEGIN_DAY, BEGIN_TIME,
+                # END_YEARMONTH, END_DAY, END_TIME,
+                EPISODE_ID,
+                EVENT_ID,
+                STATE, STATE_FIPS,
+                CZ_NAME, CZ_TYPE, CZ_FIPS,
+                EVENT_TYPE,
+                SOURCE,
+                BEGIN_LAT, BEGIN_LON, END_LAT, END_LON
+                ) |>
+  dplyr::mutate(BEGIN_DATE_TIME = lubridate::dmy_hms(BEGIN_DATE_TIME), ## Convert to date time format
+                END_DATE_TIME = lubridate::dmy_hms(END_DATE_TIME),
+                
+                STATE = stringr::str_to_sentence(STATE), ## convert to title case
+                CZ_NAME = stringr::str_to_sentence(CZ_NAME)) |>
+  dplyr::filter(CZ_TYPE == "C") |> ## filter to only counties
+  dplyr::select(-CZ_TYPE) |>
+  dplyr::mutate(STATE_FIPS = stringr::str_pad(STATE_FIPS, width = 2, side = "left", pad = "0"),
+                CZ_FIPS = stringr::str_pad(CZ_FIPS, width = 3, side = "left", pad = "0"),
+                FIPS = paste0(STATE_FIPS, CZ_FIPS)) |>
+  dplyr::rename_all(dplyr::funs(stringr::str_to_lower(.))) |>
+  
+  ## Filter down to colorado and scount by county
+  dplyr::filter(state == "Colorado") |>
+  dplyr::group_by(cz_name, event_type)|>
+  dplyr::summarise(count = dplyr::n()) |>
+  
+  dplyr::right_join(co_counties |>
+                     dplyr::rename(cz_name = NAME) |>
+                     dplyr::select(cz_name, geometry),
+                   by = "cz_name") |>
+  
+  dplyr::mutate(count = ifelse(is.na(count) == T, 0, count))
+  
+  
+ 
+storm_data_counties_event_type |>head() 
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = sf::st_as_sf(storm_data_counties), aes(fill = count)) +
+  scale_fill_viridis(name = "Number of events")
+
+
+ggplot() +
+  geom_sf(data = co_counties, color = 'lightgrey') +
+  geom_sf(data = sf::st_as_sf(storm_data_counties_event_type |>
+                                dplyr::filter(event_type %in% c("Hail", "Heavy Rain", "Tornado"))), aes(fill = count)) +
+  facet_wrap(~event_type, ncol = 3) +
+    scale_fill_viridis(name = "Number of events")
+
+
+
+```
+
+```{r}
+
+```

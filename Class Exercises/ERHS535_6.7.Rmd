@@ -1,0 +1,279 @@
+---
+title: "ERHS535_6.7"
+author: "Christopher Tsz Hin Choi"
+date: "2025-09-29"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(gridExtra)
+library(ggthemes)
+library(readxl)
+```
+
+### 6.7.1
+```{r}
+ebola = read.table('data/country_timeseries.txt', sep = ',', header = T)
+head(ebola)
+1:10
+```
+To turn this into long format, you would pivot long two new columns: countries and cases, to replace all the cases_country columns.
+
+### 6.7.2
+```{r}
+
+# deaths_url <- paste0("https://github.com/geanders/RProgrammingForResearch/",
+#                      "raw/master/data/mexico_deaths.csv")
+# 
+# mex_deaths <- read_csv(deaths_url)
+# 
+# exposure_url <- paste0("https://github.com/geanders/RProgrammingForResearch/",
+#                        "raw/master/data/mexico_exposure.csv")
+# mex_exp <- read_csv(exposure_url)
+
+mex_exp = read.table('data/mexico_exposure.txt', sep = ',', header = T)
+mex_deaths = read.table('data/mexico_deaths.txt', sep = ',', header = T)
+
+
+head(mex_deaths)
+head(mex_exp)
+```
+The individual dataframes are tidy but the dataset as a whole is not because they duplicate the date information. Joining them by that column will make it tidy
+
+```{r}
+mex_deaths |>
+  dplyr::filter(!(day %in% mex_exp$day))
+
+mex_exp %>% 
+  filter(!(day %in% mex_deaths$day))
+
+sum(!(mex_deaths$day %in% mex_exp$day))
+
+sum(!(mex_exp$day %in% mex_deaths$day))
+
+
+```
+
+```{r}
+library(lubridate) ## For parsing dates
+
+mexico <- full_join(mex_deaths, mex_exp, by = "day") |>
+        # select(day, deaths, temp_mean, temp_max) |>
+        mutate(day = mdy(day))
+
+head(mexico)
+```
+
+```{r}
+
+coeff = 4.5
+
+ggplot(data = mexico) + 
+        geom_point(mapping = aes(x = day, y = deaths),
+                   size = 1.5, alpha = 0.5) + 
+        labs(x = "Date in 2008", y = "# of deaths") + 
+        ggtitle("Deaths by date") + 
+        geom_smooth(aes(x = day, y = deaths)) + 
+        geom_smooth(aes(x = day, y = PM10*coeff), color = 'brown', se = F) +
+        # geom_smooth(aes(x = day, y = PM25)) +
+        # geom_smooth(aes(x = day, y = SO2)) +
+         scale_y_continuous(
+
+        # Features of the first axis
+        name = "Deaths",
+
+        # Add a second axis and specify its features
+        sec.axis = sec_axis(~./coeff, name="PM10")
+        ) +
+        theme_minimal()
+```
+
+### 6.7.3
+
+```{r}
+
+
+ebola_cases = ebola |>
+  dplyr::select(Date, Day, dplyr::starts_with("Cases_")) |>
+  tidyr::pivot_longer(cols = dplyr::starts_with("Cases_"),
+                      names_to = "Country",
+                      values_to = "Cases") |>
+  tidyr::separate(Country, c("Type", "Country", sep = "_")) |>
+  dplyr::select(Date, Day, Country, Cases)
+
+ebola_cases
+  
+ebola_deaths = ebola |>
+  dplyr::select(Date, Day, dplyr::starts_with("Deaths_")) |>
+  tidyr::pivot_longer(cols = dplyr::starts_with("Deaths_"),
+                      names_to = "Country",
+                      values_to = "Deaths") |>
+  tidyr::separate(Country, c("Type", "Country", sep = "_")) |>
+  dplyr::select(Date, Day, Country, Deaths)
+
+ebola_deaths
+
+ebola_longer = dplyr::full_join(ebola_cases, ebola_deaths, by = c("Date", "Day", "Country")) |>
+  dplyr::mutate(Date = mdy(Date)) |>
+  filter(!is.na(Cases) & !is.na(Deaths))
+  
+
+ebola_longer
+```
+
+```{r}
+ggplot(data = ebola_longer) +
+  geom_line(aes(x = Date, y = Cases, colour = Country)) +
+  geom_point(aes(x = Date, y = Cases, colour = Country), size = 1.5) +
+  theme_minimal()
+```
+
+```{r}
+library(forcats)
+
+ggplot(data = ebola_longer) +
+  geom_line(aes(x = Date, y = Cases, colour = Country)) +
+  geom_point(aes(x = Date, y = Cases, colour = Country), size = 1) +
+  # geom_smooth(aes(x = Day, y = Cases, colour = Country)) +
+  facet_wrap(~ fct_reorder(Country, Cases, .fun = max, .desc = TRUE), ncol = 4) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = '2015 Ebola Cases by Country')
+
+ggplot(data = ebola_longer) +
+  geom_line(aes(x = Date, y = Deaths, colour = Country)) +
+  geom_point(aes(x = Date, y = Deaths, colour = Country), size = 1) +
+  # geom_smooth(aes(x = Day, y = Cases, colour = Country)) +
+  facet_wrap(~ fct_reorder(Country, Cases, .fun = max, .desc = TRUE), ncol = 4) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(title = '2015 Ebola Deaths by Country')
+```
+
+### 6.7.4
+R comes with a dataset called VADeaths that gives death rates per 1,000 people in Virginia in 1940 by age, sex, and rural / urban.
+
+* Use data("VADeaths") to load this data. Make sure you understand what each column and row is showing – use the helpfile (?VADeaths) if you need.
+
+* Go through the three characteristics of tidy data and the five common problems in untidy data that we talked about in class. Sketch out (you’re welcome to use the whiteboards) what a tidy version of this data would look like.
+
+* Open a new R script file. Write R code to transform this dataset into a tidy dataset. Try using a pipe chain, with %>% and tidyverse functions, to clean the data.
+Use the tidy data to create the following graph:
+
+```{r}
+data("VADeaths")
+```
+
+```{r}
+head(VADeaths)
+summary(VADeaths)
+```
+pivot and categorize the data so that it is seperated by rural and urban
+```{r}
+
+
+rural.deaths <- VADeaths[,1:2] |>
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "Age") |>
+  dplyr::rename(Male = `Rural Male`,
+                Female = `Rural Female`) |>
+  dplyr::mutate(Settlement = "Rural")
+
+urban.deaths <- VADeaths[,3:4] |>
+  as.data.frame() |>
+  tibble::rownames_to_column(var = "Age") |>
+  dplyr::rename(Male = `Urban Male`,
+                Female = `Urban Female`) |>
+  dplyr::mutate(Settlement = "Urban")
+
+
+VADeaths = rbind(rural.deaths, urban.deaths) |>
+  tidyr::pivot_longer(cols = dplyr::starts_with(c("Male", "Female")),
+                      names_to = "Gender",
+                      values_to = "Deaths")
+
+```
+
+```{r}
+ggplot(data = VADeaths) +
+  geom_point(aes(x = Age, y = Deaths, colour = Gender)) +
+  facet_wrap(vars(Settlement))+
+  theme_minimal()
+
+
+```
+
+
+### 6.7.5
+```{r}
+
+# install.packages("babynames")
+library(babynames)
+data("babynames")
+```
+
+
+```{r}
+
+my_name <- babynames %>% 
+  filter(name == "Christopher")
+my_name %>% 
+  count()
+```
+```{r}
+my_name %>% 
+  group_by(sex) %>% 
+  count()
+```
+
+
+```{r}
+library(forcats)
+my_name %>% 
+  mutate(sex = fct_recode(sex, Male = "M", Female = "F")) %>% 
+  ggplot(aes(x = year, y = prop, color = sex)) + 
+  geom_line() + 
+  labs(x = "Year", y = "Proportion of babies\nof each sex named 'Christopher'",
+       color = "")
+```
+
+```{r}
+top_my_year <- babynames %>% 
+  filter(year == 1998) %>% 
+  group_by(sex) %>% 
+  arrange(desc(prop)) %>% 
+  slice(1:5)
+
+top_my_year
+```
+
+```{r}
+library(knitr)
+top_my_year %>% 
+  mutate(rank = 1:n()) %>% # Since the data is grouped by sex, this will rank
+                           # separately for females and males
+  ungroup() %>% # You have to ungroup before you can run `mutate` on `sex`
+  mutate(sex = fct_recode(sex, Male = "M", Female = "F"),
+         percent = round(100 * prop, 1),
+         percent = paste(percent, "%", sep = "")) %>% 
+  select(sex, rank, name, percent) %>% 
+  kable()
+```
+
+```{r}
+library(scales)
+top_my_year %>% 
+  ungroup() %>% 
+  mutate(name = fct_reorder(name, prop, .desc = TRUE),
+         sex = fct_recode(sex, Male = "M", Female = "F")) %>% 
+  ggplot(aes(x = name)) + 
+  geom_bar(aes(weight = prop)) + 
+  coord_flip() + 
+  labs(x = "", y = "Percent of babies with name in 1998") + 
+  theme(legend.position = "top") + 
+  scale_y_continuous(labels = percent) + 
+  facet_wrap(~ sex, scales = "free_y") + 
+  theme_classic()   
+```
+

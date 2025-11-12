@@ -1,0 +1,129 @@
+---
+title: "ERHS535 - Homework 2"
+author: "Christopher Tsz Hin Choi"
+date: "2025-09-24"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(sf)
+library(terra)
+# library(maptools)
+
+```
+
+## Section 1: Description of Data:
+
+**Content:** 
+This data is a raster of the relativised differenced normalized burn severity (RdNBR), a burn severity metric, for the 2020 CZU fire in California. RdNBR is derived derived normalized burn severity pre- and post-fire generated from satellite remote sensing imagery (Landsat OLI 7-8) in Google Earth Engine.
+
+**Research questions trying to answer:**
+* How much of redwoods canopy was damaged by fire (inferred from RdNBR)?
+* How do fire histories influence burn severity?
+
+**Format:**
+* The data is in a geoTIFF format. This type of data can be opened in an image viewer or geographic information systems (GIS) programs. This type of data has values (can be multiple as a raster with multiple bands) associated with spatial positioning.
+
+## Section 2: Reading the data into R:
+
+**Read in data**
+* I used the terra::rast() function to read in the data. The data was converted to a data frame from a raster for analysis and display
+```{r}
+rdnbr = terra::rast('data/CZU_rdnbr_DOY275-305.tif') |> as.data.frame(xy=T)
+```
+
+## Characteristics of the data:
+
+**Data exploration**
+```{r}
+rows = nrow(rdnbr)
+cols = ncol(rdnbr)
+columnNames = colnames(rdnbr)
+```
+* This dataframe has `rows` rows and `cols` columns. 
+* The names of the columns are: `columnNames`
+* Each row measures an individual RdNBR value at a location.
+
+```{r}
+knitr::kable(rdnbr[1:10,],
+             caption = "First 10 rows of RdNBR table")
+```
+* The "x" column is degrees longitude
+* The "y" column is degrees latitude
+* The "rdnbr" column is RdNBR burn severity (unitless)
+
+
+
+
+### Section 4: Summary statistics
+```{r}
+summary.rdnbr = summary(rdnbr)
+
+summary.rdnbr
+
+```
+
+## Section 5: Visualizing the data
+
+```{r, fig.width=7, fig.height =5}
+mean.rdnbr = rdnbr$rdnbr |> mean()
+
+ggplot(data = rdnbr) +
+  geom_histogram(aes(x = rdnbr),  binwidth = 10, color = 'darkgrey', fill = 'black', alpha = 0.3) +
+  scale_x_continuous(limits = c(-200, 1000), breaks = seq(-200, 1000, by = 100)) +
+  geom_vline(aes(xintercept = mean.rdnbr), color = 'darkred', size = 1, alpha = 0.5, linetype = "dashed") +
+  geom_text(aes(x = mean.rdnbr + 50, label = "Mean", y = 7500), colour = "darkred") +
+  labs (x = "RdNBR (Burn Severity)",
+        y = "Count (Pixels: 30m^2)",
+        title = "Statistical Plot: Distribution of Burn Severity Across the CZU Fire") +
+  theme_minimal()
+
+```
+
+* This plot helps to learn more about the nature of the fire that took place. We can compare this distribution to RdNBR distributions of other fires to see if this pattern is typical of fires in this region or to evaluate the ability of remotely sensed burn severity metrics to capture actual ecosystem effects.
+
+* This plot follows the rules of good plot making because it 1) has **high data-ink ratio** by using the *ggplot::theme_minimal()* function we reduce clutter, and 2) it **includes useful references** by including a mean value represented with a *ggplot::vline()*.
+
+```{r, fig.width=7, fig.height =7}
+
+ca.counties = sf::read_sf('data/cb_2018_us_county_500k/cb_2018_us_county_500k.shp') |>
+  dplyr::filter(STATEFP  == "06") |>
+  sf::st_transform(terra::crs(terra::rast('data/CZU_rdnbr_DOY275-305.tif')))
+
+ggplot(data = rdnbr) +
+  geom_sf(data = ca.counties, color = 'black', fill = 'tan', alpha = 0.5) +
+  # geom_sf_text(data = ca.counties, aes(label = NAME)) +
+  
+  
+  geom_raster(aes(x=x, y=y, fill = rdnbr)) +
+  scale_fill_gradientn(colors = c("white", "yellow", "red", "brown", "black"), limits = c(-200, 1000)) +
+
+  coord_sf(xlim = c(min(rdnbr$x), max(rdnbr$x)), 
+           ylim = c(min(rdnbr$y), max(rdnbr$y))) +
+  scale_x_continuous(breaks = seq(-123, -122, by = 0.1)) +
+  scale_y_continuous(breaks = seq(37, 38, by = 0.05)) +
+  labs (x = "Longitude",
+        y = "Latitude",
+        title = "Statistical Plot: Distribution of \nBurn Severity Across the CZU Fire") +
+  ggspatial::annotation_scale(dist = 5, width_hint = 0.23) +
+  
+  theme_minimal()
+
+
+
+```
+
+* This visualization helps us to understand the scale of the fire. By plotting the fire against other fires we can begin to understand whether there may be spatial relationships between fires (ie autocorrelation) and what other environemntal/topographical variables could be influencing burn severity.
+
+* THis is a non-statistical geom because it displays x (longitude), y (latitude) data. This plot follows the rules of good plot making because it 1) has **high data-ink ratio** by using the *ggplot::theme_minimal()* function we reduce clutter, and 2) it **includes useful references** by including a counties map in the background and a scale bar.
+
+
+
+

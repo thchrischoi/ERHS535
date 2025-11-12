@@ -1,0 +1,156 @@
+---
+title: "ERHS535_3.8"
+author: "Christopher Tsz Hin Choi"
+date: "2025-09-10"
+output: html_document
+---
+
+```{r}
+# install.packages('faraway')
+library(faraway)
+library(ggplot2)
+library(dplyr)
+data('worldcup')
+```
+
+```{r}
+?worldcup
+
+str(worldcup)
+head(worldcup)
+tail(worldcup)
+```
+
+### 3.8.2
+```{r}
+summary(worldcup)
+
+```
+
+```{r}
+mean(worldcup$Saves)
+```
+
+```{r}
+worldcup |>
+  dplyr::summarize(mean_saves = mean(Saves))
+
+worldcup |>
+  dplyr::filter(Position == "Goalkeeper") |>
+  dplyr::summarize(mean_saves = mean(Saves))
+
+worldcup 
+```
+
+### 3.8.3
+```{r}
+# Minimum time
+dplyr::arrange(worldcup, Time)|>
+  dplyr::select(Time) |>
+  dplyr::slice(1)
+```
+
+```{r}
+dplyr::arrange(worldcup, desc(Time)) |>
+  dplyr::select(Time) |>
+  dplyr::slice(1)
+
+
+worldcup |>
+  dplyr::filter(Time == 570)
+```
+
+
+### 3.8.4.1
+```{r}
+
+
+ggplot(worldcup) +
+  geom_point(mapping = aes(x = Time, y = Passes))
+
+## with piping
+worldcup %>%
+  ggplot() +
+  geom_point(mapping = aes(x = Time, y = Passes))
+  
+
+```
+
+```{r}
+ggplot(worldcup,
+       mapping = aes(x = Time, y = Passes, color = Position)) + 
+  geom_point() + 
+  geom_rug()
+```
+
+```{r}
+worldcup |> 
+  tibble::rownames_to_column(var = "Name") |> 
+  dplyr::filter(Team %in% c("Spain", "Netherlands", "Germany", "Uruguay")) |>
+  ggplot() + 
+  geom_point(aes(x = Shots, y = Tackles, color = Position, shape = Team)) + 
+  geom_text(mapping = aes(x = Shots, y = Tackles, 
+                          color = Position, label = Name), 
+            size = 2.5)
+
+```
+
+
+```{r}
+worldcup |>
+  dplyr::mutate(top_4 = Team %in% c("Spain", "Netherlands", "Germany", "Uruguay")) |> 
+  ggplot() + 
+  geom_point(aes(x = Time, y = Passes, color = top_4))
+```
+
+```{r}
+# Make the points "darkseagreen4"
+ggplot(worldcup) + 
+  geom_point(mapping = aes(x = Time, y = Passes, color = Team),
+             #color = "darkseagreen4",
+             size = 2,
+             alpha = 0.3) + 
+  labs(x = "Time (minutes)", y = "Number of passes") + 
+  ggtitle("World Cup statistics",
+          subtitle = "2010 World Cup")
+```
+
+
+### 3.8.6
+```{r}
+ggplot(worldcup, aes(x = Time)) + 
+  geom_histogram(bins = 50)
+```
+
+
+```{r}
+ggplot(worldcup, aes(x = Time)) + 
+  geom_histogram(binwidth = 100)
+```
+
+
+
+```{r}
+ggplot(worldcup, aes(x = Position, y = Shots)) + 
+  geom_boxplot()
+```
+
+```{r}
+top_teams <- worldcup %>%
+  filter(Team %in% c("Spain", "Netherlands", "Germany", "Uruguay")) 
+
+head(top_teams)
+```
+
+
+```{r}
+ggplot(top_teams, aes(x = Team, y = Shots)) + 
+  geom_boxplot() + 
+  ggtitle("Shots per player in World Cup 2010")
+```
+
+```{r}
+ggplot(data = top_teams) + 
+  geom_histogram(aes(x = Time, fill = Team), binwidth = 90)
+```
+

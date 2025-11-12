@@ -1,0 +1,189 @@
+---
+title: "ERHS535_4.10"
+author: "Christopher Tsz Hin Choi"
+date: "2025-09-17"
+output: html_document
+---
+
+```{r}
+library(faraway)
+library(ggplot2)
+library(dplyr)
+library(ggthemes)
+data(worldcup)
+head(worldcup, 2)
+```
+
+Prompt: 
+```{r}
+ggplot(data = worldcup) +
+  geom_point(data = worldcup, aes(Time, Shots, color = Position), alpha = 0.5) +
+  geom_smooth(data = worldcup, aes(Time, Shots, color = Position), method = 'lm')
+
+
+ggplot(data = worldcup |> dplyr::filter(Team %in% c("Netherlands", "Argentina", "Germany", "Spain"))) +
+  geom_point(aes(Time, Shots, shape = Team), alpha = 0.5) +
+  geom_smooth(aes(Time, Shots, color = Position), method = 'lm')
+```
+
+
+```{r}
+library(dplyr)
+worldcup <- worldcup %>%
+  tibble::rownames_to_column(var = "Player")
+head(worldcup, 2)
+```
+
+```{r}
+# install.packages("ggplot2")
+library(ggplot2)
+# install.packages("ggthemes")
+library(ggthemes)
+```
+
+### 4.10.2
+```{r}
+ggplot(data = worldcup) +
+        geom_point(mapping = aes(x = Time, y = Shots))
+```
+
+
+```{r}
+ggplot(data = worldcup) +
+        geom_point(mapping = aes(x = Time, y = Shots),
+                   size = 1, alpha = 0.5)
+```
+
+
+
+```{r}
+worldcup <- worldcup %>%
+  mutate(top_4 = Team %in% c("Spain", "Germany",  
+                                "Uruguay", "Netherlands"))
+head(worldcup)
+```
+
+```{r}
+summary(worldcup$top_4)
+
+```
+
+```{r}
+ggplot(data = worldcup) +
+        geom_point(mapping = aes(x = Time, y = Shots, color = top_4),
+                   size = 1, alpha = 0.5)
+```
+
+```{r}
+shot_plot <- ggplot(data = worldcup) +
+        geom_point(mapping = aes(x = Time, y = Shots, color = top_4),
+                   size = 1, alpha = 0.5)
+
+
+shot_plot + ggthemes::theme_few()
+
+shot_plot + theme_tufte()
+
+shot_plot + theme_wsj()
+
+shot_plot + theme_fivethirtyeight()
+
+shot_plot + theme_stata()
+
+shot_plot + theme_economist_white()
+
+
+```
+
+```{r}
+ggplot(data = worldcup) +
+  geom_point(mapping = aes(x = Time, y = Shots, color = top_4),
+             size = 1, alpha = 0.5) + 
+  theme_few()
+```
+
+```{r}
+ggplot(data = worldcup) +
+  geom_point(mapping = aes(x = Time, y = Shots, color = top_4),
+             size = 1, alpha = 0.5) + 
+  theme_few() + 
+  labs(x = "Time played in World Cup (minutes)",
+       color = "Team's final\nranking")
+`````
+
+```{r}
+ggplot(data = worldcup) +
+  geom_point(mapping = aes(x = Time, y = Shots, color = top_4),
+             size = 1, alpha = 0.5) + 
+  theme_few() + 
+  labs(x = "Time played in World Cup (minutes)",
+       color = "Team's final\nranking")
+```
+
+
+```{r}
+ggplot(data = worldcup) +
+  geom_vline(xintercept = 270, color = 'lightgrey', linetype = 2) +
+  geom_point(mapping = aes(x=Time, y = Shots, color = top_4),
+             size = 1, alpha =0.5) +
+  theme_few() +
+  labs(x = 'Time played in World Cup (minutes)',
+       color = "Team's final\nranking")
+```
+```{r}
+top_player <- worldcup %>% 
+  top_n(n = 1, wt = Shots) %>% 
+  mutate(label = paste0(Player, ", ", Team))
+
+worldcup %>% 
+  mutate(top_4 = Team %in% c("Netherlands", "Uruguay", "Spain", "Germany")) %>% 
+  ggplot(aes(x = Time, y = Shots, color = top_4)) + 
+  geom_vline(xintercept = 90 * 3, color = "gray", linetype = 2) +
+  geom_point(alpha = 0.5, size = 1) + 
+  geom_text(data = top_player, 
+            aes(label = label, color = NULL),
+            hjust = 1.1, vjust = 0.4) +
+  labs(x = "Time played in World Cup (minutes)",
+       color = "Team's final\nranking") + 
+  theme_few()
+```
+
+```{r}
+top_player <- worldcup |>
+  top_n(n=1, wt = Shots) |>
+  dplyr::mutate(label = paste0(Player, ", ", Team))
+
+worldcup |>
+  dplyr::mutate(top_4 = Team %in% c("Netherlands", "Uruguay", "Spain", "Germany")) |>
+  ggplot(aes(x = Time, y = Shots, color = top_4)) +
+  geom_vline(xintercept = 90*3, color = "gray", linetype = 2) +
+  geom_point(alpha = 0.5, size = 1) +
+  geom_text(data = top_player,
+            aes(label = label, color = NULL),
+            hjust = 1.1, vjust = 0.4) +
+  labs(x = "time played in World Cup (minutes)",
+       color = "Team's final\nranking") +
+  theme_few() +
+  facet_wrap (~ Position, ncol = 4)
+
+```
+
+
+```{r}
+worldcup |> 
+  dplyr::mutate(top_4 = Team %in% c("Neterlands", "Uruguay", "Spain", "Germany"),
+                Position = factor(Position, levels = c("Goalkeeper", "Defender", "Midfielder", "Forward"))) |>
+  ggplot() +
+  geom_vline(xintercept = 90*3, color = 'grey', linetype = 2) +
+  geom_point(aes(x = Time, y = Shots, color = top_4),
+             alpha = 0.5, size = 1) +
+  geom_text(data = top_player, 
+            aes(x = Time, y = Shots, label = label),
+            hjust = 1.1, vjust = 0.4) +
+  labs(x = "Time played in World Cup (minutes)",
+       color = "Team's final\nranking") +
+  theme_few() +
+  facet_wrap(~ Position, ncol = 4)
+  
+
+```
