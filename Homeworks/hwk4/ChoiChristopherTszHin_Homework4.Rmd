@@ -86,7 +86,7 @@ head(unsolved_prop_test)
 ## Q5
 
 Create the plot shown below. Hint: Check out the geom_errorbarh geom with the height = 0 option to get the horizontal lines for the confidence intervals. To get full points, be very careful to make sure that all labeling, color choices, figure dimensions, etc., in your figure match the figure shown here. (25 points)
-```{r, fig.width= 5, fig.height=7}
+```{r, fig.width= 5, fig.height=9}
 library(ggplot2)
 
 ggplot(unsolved_prop_test) +
