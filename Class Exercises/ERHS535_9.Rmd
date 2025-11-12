@@ -20,7 +20,7 @@ knitr::opts_chunk$set(
   error = FALSE    
 )
 ```
-
+ 
 ```{r}
 #set package repo----
 options(repos = c("https://packagemanager.rstudio.com/all/2020-10-01+Y3JhbiwyOjI4Nzs0QzY3NkFEQQ"))
