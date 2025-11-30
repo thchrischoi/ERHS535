@@ -1,0 +1,115 @@
+---
+title: "Homework 5"
+author: "Christopher Tsz Hin Choi"
+date: "2025-11-30"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_chunk$set(
+  echo = TRUE,  
+  results = "markup", 
+  warning = FALSE,   
+  message = FALSE,
+  error = FALSE    
+)
+```
+
+
+```{r}
+library(ggplot2)
+```
+
+##### Import data
+
+```{r}
+homicides = read.csv('data/homicide-data.csv') |>
+  dplyr::mutate(city_name = paste0(city, ", ",state))
+```
+
+Find the city with the highest homicide and convert to sf
+```{r}
+homicide.city.count = homicides |>
+  dplyr::group_by(city, state) |>
+  dplyr::summarise(count = dplyr::n()) |>
+  dplyr::ungroup() |>
+  dplyr::arrange(-count)
+
+head(homicide.city.count)
+```
+
+```{r}
+chicago.homicides = homicides |>
+  dplyr::filter(city == 'Chicago',
+                state == 'IL') |>
+  sf::st_as_sf(coords = c("lon", "lat"),
+               crs = 4269) ## crs same as tigris object
+
+chicago.homicides
+```
+
+Import chicago vector
+```{r}
+
+chicago.boundary = tigris::places(state = "IL", cb = T, class = "sf") |>
+  dplyr::filter(NAME == "Chicago")
+
+ggplot(data = chicago.boundary) +
+  geom_sf()
+```
+
+Plot locations of homicides into chicago
+```{r}
+ggplot() +
+  geom_sf(data = chicago.boundary) +
+  geom_sf(data = chicago.homicides, colour = "red", alpha=0.3)
+```
+
+Trun map into heat map to show density
+```{r}
+ggplot() +
+  ## Density heat map
+  geom_density2d_filled(
+    data = chicago.homicides.coords,
+    aes(x = X, y = Y, fill = after_stat(level)),
+    alpha = 0.85,
+    contour_var = "ndensity"
+  ) +
+
+  scale_fill_viridis_d(
+    option = "magma",
+    direction = -1,
+    name = "Density Level"
+  ) +
+  ## Chicago BOundary
+  geom_sf(data = chicago.boundary, color = "orange", size = 1, alpha = 0) +
+
+  labs(
+    title = "Homicide Density Across Chicago",
+    subtitle = "Kernel density estimate of homicide locations",
+    caption = paste0("Total number of homicides: ", nrow(chicago.homicides))
+  ) +
+
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 18),
+    plot.subtitle = element_text(size = 13),
+    plot.caption = element_text(size = 9, color = "grey40")
+  )
+
+```
+
+
+Interpretation:
+* Areas with highest homicide density in the area are in the darkest color contour
+* Each lighter contour shows areas with proportionally lower relative density to the darkest contour
+
+
