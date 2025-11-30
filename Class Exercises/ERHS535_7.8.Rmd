@@ -23,6 +23,12 @@ top_letters %>%
   select(name, first_letter) %>% 
   slice(1:5)
 
+penguins <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-04-15/penguins.csv')
+View(penguins)
+sevens <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2022/2022-05-24/sevens.csv')
+View(sevens)
+cheeses <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2024/2024-06-04/cheeses.csv')
+View(cheeses)
 ```
 
 ```{r}
@@ -243,7 +249,7 @@ real_world_list
 ```
 
 ```{r}
-word_list = read.csv('https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt', header = F) |>
+word_list = read.ecsv('https://raw.githubusercontent.com/first20hours/google-10000-english/master/google-10000-english-no-swears.txt', header = F) |>
   dplyr::rename(words = "V1")
 
 
