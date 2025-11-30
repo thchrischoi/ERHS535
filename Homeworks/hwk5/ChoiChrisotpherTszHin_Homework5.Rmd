@@ -3,8 +3,9 @@ title: "Homework 5"
 author: "Christopher Tsz Hin Choi"
 date: "2025-11-30"
 output:
-  word_document: default
+  pdf_document: default
   html_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -71,6 +72,13 @@ ggplot() +
 
 Trun map into heat map to show density
 ```{r}
+
+chicago.homicides.coords <- chicago.homicides |>
+  sf::st_coordinates() |>
+  as.data.frame() |>
+  dplyr::bind_cols(chicago.homicides)
+
+
 ggplot() +
   ## Density heat map
   geom_density2d_filled(
@@ -105,11 +113,24 @@ ggplot() +
     plot.caption = element_text(size = 9, color = "grey40")
   )
 
+
+ggsave('Homicide_Density_Accross_Chicago.png')
+
 ```
 
 
-Interpretation:
+#### Interpretation:
+
 * Areas with highest homicide density in the area are in the darkest color contour
+
 * Each lighter contour shows areas with proportionally lower relative density to the darkest contour
 
 
+
+### SOlved/unsovled locations
+
+```{r}
+ggplot(data = chicago.homicides) +
+  geom_sf(aes(colour = victim_race), alpha = 0.3)
+  
+```
