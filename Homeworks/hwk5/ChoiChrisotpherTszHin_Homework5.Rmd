@@ -130,7 +130,42 @@ ggsave('Homicide_Density_Accross_Chicago.png')
 ### SOlved/unsovled locations
 
 ```{r}
-ggplot(data = chicago.homicides) +
-  geom_sf(aes(colour = victim_race), alpha = 0.3)
+
+chicago.homicides.top.3.races = chicago.homicides |>
+  sf::st_drop_geometry() |>
+  dplyr::group_by(victim_race) |>
+  dplyr::summarise(count = dplyr::n()) |>
+  dplyr::arrange(-count) |>
+  dplyr::slice(1:3) |>
+  dplyr::select(victim_race)# |>
+  # as.vector() 
+
+chicago.homicides.top.3.races = chicago.homicides |>
+  # sf::st_drop_geometry() |>
+          dplyr::mutate(solved = ifelse(disposition %in% c("Closed by arrest"), "Solved", "Unsolved")) |>
+  dplyr::filter(victim_race %in% chicago.homicides.top.3.races$victim_race)
+
+ggplot(data = chicago.homicides.top.3.races) +
+  geom_sf(aes(colour = victim_race), alpha = 0.3) +
+  scale_color_manual(values = c("#4c92a0", "#5a382e", "#fa5a09")) +
+  geom_sf(data = chicago.boundary, color = "black", alpha = 0) +
+  facet_wrap(vars(solved)) +
   
+  labs(title = "Homicides in Chicago",
+       subtitle = "Three race groups with the highest homicide rate",
+       color = "Victim Race") +
+  
+  theme_minimal() +
+  theme(
+    panel.grid = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    legend.position = "right",
+    plot.title = element_text(face = "bold", size = 18),
+    plot.subtitle = element_text(size = 13),
+    plot.caption = element_text(size = 9, color = "grey40")
+  )
+
+ggsave('Homicide_By_Race_Across_Chicago.png')
+
 ```
