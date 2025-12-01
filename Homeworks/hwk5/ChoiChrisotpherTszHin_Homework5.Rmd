@@ -94,7 +94,7 @@ ggplot() +
     name = "Density Level"
   ) +
   ## Chicago BOundary
-  geom_sf(data = chicago.boundary, color = "orange", size = 1, alpha = 0) +
+  geom_sf(data = chicago.boundary, color = "black", alpha = 0) +
 
   labs(
     title = "Homicide Density Across Chicago",
@@ -110,11 +110,11 @@ ggplot() +
     legend.position = "right",
     plot.title = element_text(face = "bold", size = 18),
     plot.subtitle = element_text(size = 13),
-    plot.caption = element_text(size = 9, color = "grey40")
+    plot.caption = element_text(size = 9, color = "grey20")
   )
 
 
-ggsave('Homicide_Density_Accross_Chicago.png')
+ggsave('Homicide_Density_Across_Chicago.png')
 
 ```
 
