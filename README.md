@@ -17,3 +17,7 @@
 
 #### Homicide density across Chicago, IL
 ![Homicide Density across chicago](Homeworks/hwk5/Homicide_Density_Accross_Chicago.png "Hwk5. Homicide density  across chicago")
+
+* Areas with highest homicide density in the area are in the darkest color contour
+
+* Each lighter contour shows areas with proportionally lower relative density to the darkest contour
