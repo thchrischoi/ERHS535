@@ -1,0 +1,80 @@
+---
+title: "Homework 6"
+author: "Christopher Tsz Hin Choi"
+date: "2025-12-10"
+output:
+  word_document: default
+  html_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_chunk$set(
+  echo = TRUE,  
+  results = "markup", 
+  warning = FALSE,   
+  message = FALSE,
+  error = FALSE    
+)
+```
+
+# Q1
+Read the article Good Enough Practices in Scientific Computing by Wilson et al. (available here). In a half page, describe which of these “pretty good practices” you are incorporating for your group project. Also list one or two practices that you are not following but that would have made sense and how you could change your practices to follow them.
+
+* While collaborating, we **"Create[d] an overview of [our] project (3a)"** by adding a README markdown that includes important links for the project (ie data source) and some details on the project. We've also included helpful resources for working on the project for teammates so that it becomes a landing page for collaboration.Within project organization, I believe we've taken on the practice of **"Put[ting] raw data and metadata in a data directory, and files generated during cleanup and analysis in a results directory (4c)"**. We have our data stored in a "data" folder. **Make dependencies and requirements explicit (2g)** is achieved by making it clear which script produces the flex dashboard. The flex dashboard script is set up to source all other scripts within the directory so that no other scripts need to be manually run. This also reduces the amount of code that has to be present on the flex dashboard script so that the script is primarily focussed on the creation and formatting of the flex dashboard, which enables easier editting and troubleshooting.
+
+* A practice that would be a good idea to incorporate would be to **place a brief explanatory comment at the start of every program (2a)**. We focussed more on explaining the outputs of each script so that it can be described to a viewer of the flex dashboard. But, an explanation of each script would help a programmer understand the thinking going into each script and perhaps more context to how the script arrived to the output. It could also make it much easier for anyone trying to understand how the scripts interacted with each other with reference information at the head of each script.
+
+
+# Q2
+
+Find an article in The R Journal that describes an R package that you could use in your own research or otherwise find interesting. Describe why the package was created and what you think it’s most interesting features are. In an R Markdown document, run one or two of the R examples included in the article.
+
+* The article: Exploring Image Analysis in R: Applications and Advancements, published Oct 21, 2025  describes the package EBImage. EBImage is used for segmentation of closely adjacent objects by a binary method followed by a watershed function to separate objects. The article describes an application of this package for cell microscopy. This could also be used in satellite remote sensing to separate and identify a collection of repetitive objects such as trees in a forest, people in a crowd, or herds of animals on a landscape. 
+
+* https://journal.r-project.org/articles/RJ-2025-030/#ebimage-specialized-segmentation-strategy-for-touching-objects
+
+```{r}
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+
+# BiocManager::install("EBImage")
+
+library(EBImage)
+```
+
+
+
+Load 
+```{r}
+image <- EBImage::readImage("data/cell_microscopy.jpg")
+
+# Display original image
+EBImage::display(image)
+
+```
+
+```{r}
+# Apply a threshold to the original image to create a binary image
+img_thresh <- thresh(image, offset = 0.05)
+
+# Read the binary image and display it
+EBImage::display(img_thresh)
+```
+
+
+```{r}
+# Perform watershed segmentation on the distance map of the thresholded image
+segmented <- EBImage::watershed(distmap(img_thresh))
+
+# Color the labels of the segmented image
+segmented_col <- colorLabels(segmented)
+
+# Display the resulting image after watershed segmentation
+EBImage::display(segmented_col)
+```
+
+
+
